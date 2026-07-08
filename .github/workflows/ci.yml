@@ -1,0 +1,19 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches:
+      - compose
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Show project files
+      run: ls
