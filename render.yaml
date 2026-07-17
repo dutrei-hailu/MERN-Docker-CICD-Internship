@@ -1,0 +1,46 @@
+# Render Blueprint — Day 4 Continuous Deployment
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Setup:
+# 1. Connect this repo to Render
+# 2. Apply this blueprint (or create services manually)
+# 3. Add RENDER_DEPLOY_HOOK_URL to GitHub Secrets for auto-deploy on merge
+
+services:
+  - type: web
+    name: mern-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./mern/backend/Dockerfile
+    dockerContext: ./mern/backend
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "5050"
+      - key: MONGO_URI
+        fromDatabase:
+          name: mern-mongodb
+          property: connectionString
+      - key: MONGODB_DB_NAME
+        value: employees
+      - key: INSTANCE_ID
+        value: render-backend
+    autoDeploy: true
+
+  - type: web
+    name: mern-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./mern/frontend/Dockerfile.prod
+    dockerContext: ./mern/frontend
+    dockerCommand: ""
+    envVars:
+      - key: VITE_API_URL
+        value: ""
+    autoDeploy: true
+
+databases:
+  - name: mern-mongodb
+    plan: free
+    databaseName: employees
+    ipAllowList: []
