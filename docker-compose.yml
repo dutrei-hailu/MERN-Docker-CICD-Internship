@@ -1,0 +1,75 @@
+services:
+  backend:
+    build:
+      context: ./mern/backend
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME:-local}/backend-app:dev
+    container_name: mern-backend
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    environment:
+      MONGO_URI: mongodb://mongodb:27017
+      PORT: 5050
+    networks:
+      - mern_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5050/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./mern/frontend
+      dockerfile: Dockerfile
+      target: development
+    image: ${DOCKER_USERNAME:-local}/frontend-app:dev
+    container_name: mern-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:5050
+    networks:
+      - mern_network
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  mongodb:
+    image: mongo:7.0
+    container_name: mern-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    networks:
+      - mern_network
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+networks:
+  mern_network:
+    name: mern_network
+    driver: bridge
+
+volumes:
+  mongo-data:
+    name: mongo-data
+    driver: local

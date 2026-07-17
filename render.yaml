@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: mern-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./mern/backend/Dockerfile
+    dockerContext: ./mern/backend
+    healthCheckPath: /health
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: PORT
+        value: 5050
+    autoDeploy: true
+
+  - type: web
+    name: mern-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./mern/frontend/Dockerfile
+    dockerContext: ./mern/frontend
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+    autoDeploy: true
+
+  - type: pserv
+    name: mern-mongodb
+    runtime: docker
+    plan: free
+    image:
+      url: docker.io/mongo:7.0
+    disk:
+      name: mongo-data
+      mountPath: /data/db
+      sizeGB: 1

@@ -1,0 +1,33 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Trigger Render deploy hook
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK_URL" ]; then
+            curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+            echo "Render deploy hook triggered."
+          else
+            echo "RENDER_DEPLOY_HOOK_URL secret not set; skipping hook call."
+          fi
+
+      - name: Deployment note
+        run: |
+          echo "Merge to main/production completed."
+          echo "Configure RENDER_DEPLOY_HOOK_URL in GitHub Secrets for automatic Render redeploys."
+          echo "Set application env vars in Render dashboard (never commit secrets to git)."
