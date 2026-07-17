@@ -1,0 +1,43 @@
+# Example: run pre-built images from Docker Hub without source code.
+# Replace YOUR_DOCKERHUB_USERNAME before use.
+services:
+  backend:
+    image: YOUR_DOCKERHUB_USERNAME/backend-app:latest
+    ports:
+      - "5050:5050"
+    environment:
+      MONGO_URI: mongodb://mongodb:27017
+      PORT: 5050
+    networks:
+      - mern_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  frontend:
+    image: YOUR_DOCKERHUB_USERNAME/frontend-app:latest
+    ports:
+      - "5173:80"
+    networks:
+      - mern_network
+    depends_on:
+      - backend
+
+  mongodb:
+    image: mongo:7.0
+    networks:
+      - mern_network
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  mern_network:
+    driver: bridge
+
+volumes:
+  mongo-data:

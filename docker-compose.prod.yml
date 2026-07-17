@@ -1,0 +1,171 @@
+# Day 5 production-style stack:
+# Nginx reverse proxy + 2 backend replicas + monitoring (Prometheus + Grafana)
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: mern-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - mern_network
+    depends_on:
+      backend-1:
+        condition: service_healthy
+      backend-2:
+        condition: service_healthy
+
+  backend-1:
+    build:
+      context: ./mern/backend
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME:-local}/backend-app:${IMAGE_TAG:-latest}
+    container_name: mern-backend-1
+    restart: unless-stopped
+    environment:
+      MONGO_URI: mongodb://mongodb:27017
+      PORT: 5050
+    networks:
+      - mern_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5050/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  backend-2:
+    build:
+      context: ./mern/backend
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME:-local}/backend-app:${IMAGE_TAG:-latest}
+    container_name: mern-backend-2
+    restart: unless-stopped
+    environment:
+      MONGO_URI: mongodb://mongodb:27017
+      PORT: 5050
+    networks:
+      - mern_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5050/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./mern/frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_API_URL: http://localhost
+    image: ${DOCKER_USERNAME:-local}/frontend-app:${IMAGE_TAG:-latest}
+    container_name: mern-frontend-prod
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    networks:
+      - mern_network
+    depends_on:
+      - nginx
+
+  mongodb:
+    image: mongo:7.0
+    container_name: mern-mongodb-prod
+    restart: unless-stopped
+    networks:
+      - mern_network
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: mern-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    networks:
+      - mern_network
+    depends_on:
+      - cadvisor
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: mern-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - mern_network
+    depends_on:
+      - prometheus
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: mern-cadvisor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - mern_network
+
+networks:
+  mern_network:
+    name: mern_network
+    driver: bridge
+
+volumes:
+  mongo-data:
+    name: mongo-data
+    driver: local
+  prometheus-data:
+    name: prometheus-data
+    driver: local
+  grafana-data:
+    name: grafana-data
+    driver: local
