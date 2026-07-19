@@ -1,5 +1,5 @@
 # Development image (Vite dev server) — used by docker-compose.yml
-FROM node:18-alpine AS development
+FROM node:22-alpine AS development
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev"]
 
 # Production build stage
-FROM node:18-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 

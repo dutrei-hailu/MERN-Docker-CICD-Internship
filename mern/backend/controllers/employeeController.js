@@ -25,6 +25,36 @@ export const createEmployee = async (req, res) => {
   }
 };
 
+export const updateEmployee = async (req, res) => {
+  try {
+    const { name, email, position } = req.body;
+    if (!name?.trim() || !email?.trim() || !position?.trim()) {
+      return res.status(400).json({ message: "Name, email, and position are required" });
+    }
+
+    const updates = {
+      name: name.trim(),
+      email: email.trim(),
+      position: position.trim(),
+      updatedAt: new Date(),
+    };
+
+    const result = await collection().findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      { $set: updates },
+      { returnDocument: "after" }
+    );
+
+    if (!result) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const deleteEmployee = async (req, res) => {
   try {
     const result = await collection().deleteOne({ _id: new ObjectId(req.params.id) });

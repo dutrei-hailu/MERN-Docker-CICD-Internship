@@ -1,6 +1,6 @@
 import express from "express";
 import { ObjectId } from "mongodb";
-import { createEmployee, deleteEmployee, listEmployees } from "../controllers/employeeController.js";
+import { createEmployee, deleteEmployee, listEmployees, updateEmployee } from "../controllers/employeeController.js";
 import db from "../db/connection.js";
 
 const router = express.Router();
@@ -18,6 +18,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 router.post("/", createEmployee);
+router.put("/:id", updateEmployee);
 router.delete("/:id", deleteEmployee);
 
 export default router;
