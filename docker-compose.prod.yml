@@ -11,6 +11,11 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - mern_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     depends_on:
       backend-1:
         condition: service_healthy
@@ -88,7 +93,8 @@ services:
     networks:
       - mern_network
     depends_on:
-      - nginx
+      nginx:
+        condition: service_healthy
 
   mongodb:
     image: mongo:7.0
@@ -97,7 +103,7 @@ services:
     networks:
       - mern_network
     volumes:
-      - mongo-data:/data/db
+      - mongo-data-prod:/data/db
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
@@ -160,8 +166,8 @@ networks:
     driver: bridge
 
 volumes:
-  mongo-data:
-    name: mongo-data
+  mongo-data-prod:
+    name: mongo-data-prod
     driver: local
   prometheus-data:
     name: prometheus-data

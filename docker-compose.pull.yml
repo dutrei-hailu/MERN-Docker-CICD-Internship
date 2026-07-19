@@ -3,6 +3,7 @@
 services:
   backend:
     image: YOUR_DOCKERHUB_USERNAME/backend-app:latest
+    restart: unless-stopped
     ports:
       - "5050:5050"
     environment:
@@ -16,6 +17,7 @@ services:
 
   frontend:
     image: YOUR_DOCKERHUB_USERNAME/frontend-app:latest
+    restart: unless-stopped
     ports:
       - "5173:80"
     networks:
@@ -25,6 +27,7 @@ services:
 
   mongodb:
     image: mongo:7.0
+    restart: unless-stopped
     networks:
       - mern_network
     volumes:

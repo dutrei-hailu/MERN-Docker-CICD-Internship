@@ -56,7 +56,7 @@ services:
     networks:
       - mern_network
     volumes:
-      - mongo-data:/data/db
+      - mongo-data-dev:/data/db
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
@@ -70,6 +70,6 @@ networks:
     driver: bridge
 
 volumes:
-  mongo-data:
-    name: mongo-data
+  mongo-data-dev:
+    name: mongo-data-dev
     driver: local
