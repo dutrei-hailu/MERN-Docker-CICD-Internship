@@ -4,7 +4,7 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "id": null,
   "links": [],
   "panels": [
@@ -15,22 +15,15 @@
       },
       "fieldConfig": {
         "defaults": {
+          "color": { "mode": "palette-classic" },
           "unit": "percentunit"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
       "id": 1,
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        }
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
       },
       "targets": [
         {
@@ -49,31 +42,24 @@
       },
       "fieldConfig": {
         "defaults": {
+          "color": { "mode": "palette-classic" },
           "unit": "bytes"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
       "id": 2,
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        }
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
       },
       "targets": [
         {
-          "expr": "container_memory_usage_bytes{name=~\"mern-backend-.*|mern-mongodb-prod|mern-nginx\"}",
+          "expr": "container_memory_usage_bytes{name=~\"mern-backend-.*\"}",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
-      "title": "Container Memory Usage",
+      "title": "Backend Memory Usage",
       "type": "timeseries"
     },
     {
@@ -81,18 +67,37 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 8
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "bytes"
+        },
+        "overrides": []
       },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
       "id": 3,
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{name=~\"mern-mongodb.*|mern-nginx|mern-grafana|mern-prometheus\"}",
+          "legendFormat": "{{name}}",
+          "refId": "A"
         }
+      ],
+      "title": "Infrastructure Memory Usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 8 },
+      "id": 4,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] }
       },
       "targets": [
         {
@@ -101,20 +106,138 @@
           "refId": "A"
         }
       ],
-      "title": "Container Health (last seen)",
+      "title": "Container Status (Running Count)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 8 },
+      "id": 5,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "rate(container_network_receive_bytes_total{name=~\"mern-backend-.*|mern-nginx|mern-mongodb.*\"}[1m])",
+          "legendFormat": "{{name}} rx",
+          "refId": "A"
+        },
+        {
+          "expr": "-rate(container_network_transmit_bytes_total{name=~\"mern-backend-.*|mern-nginx|mern-mongodb.*\"}[1m])",
+          "legendFormat": "{{name}} tx",
+          "refId": "B"
+        }
+      ],
+      "title": "Network Traffic (Core Services)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 6,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "rate(http_requests_total[1m])",
+          "legendFormat": "{{method}} {{route}} {{status_code}}",
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP Request Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 7,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[1m]))",
+          "legendFormat": "p95 {{method}} {{route}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[1m]))",
+          "legendFormat": "p50 {{method}} {{route}}",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(http_request_duration_seconds_sum[1m]) / rate(http_request_duration_seconds_count[1m])",
+          "legendFormat": "avg {{method}} {{route}}",
+          "refId": "C"
+        }
+      ],
+      "title": "Response Time (Latency)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+      "id": 8,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{name=~\"mern-.*\"}",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "All Containers Memory Usage",
       "type": "timeseries"
     }
   ],
   "refresh": "10s",
   "schemaVersion": 39,
   "tags": ["mern", "docker"],
-  "templating": {
-    "list": []
-  },
-  "time": {
-    "from": "now-15m",
-    "to": "now"
-  },
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
   "title": "MERN Container Metrics",
   "uid": "mern-container-metrics",
   "version": 1

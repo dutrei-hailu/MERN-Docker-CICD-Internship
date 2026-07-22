@@ -1,4 +1,7 @@
 services:
+  # ──────────────────────────────────────────────
+  # Original services (preserved for development)
+  # ──────────────────────────────────────────────
   backend:
     build:
       context: ./mern/backend
@@ -64,6 +67,171 @@ services:
       retries: 5
       start_period: 20s
 
+  # ──────────────────────────────────────────────
+  # Production infrastructure services
+  # ──────────────────────────────────────────────
+  backend-1:
+    build:
+      context: ./mern/backend
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME:-local}/backend-app:${IMAGE_TAG:-latest}
+    container_name: mern-backend-1
+    restart: unless-stopped
+    environment:
+      MONGO_URI: mongodb://mongodb:27017
+      PORT: 5050
+    networks:
+      - mern_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5050/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  backend-2:
+    build:
+      context: ./mern/backend
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME:-local}/backend-app:${IMAGE_TAG:-latest}
+    container_name: mern-backend-2
+    restart: unless-stopped
+    environment:
+      MONGO_URI: mongodb://mongodb:27017
+      PORT: 5050
+    networks:
+      - mern_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5050/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend-prod:
+    build:
+      context: ./mern/frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_API_URL: http://localhost
+    image: ${DOCKER_USERNAME:-local}/frontend-app:${IMAGE_TAG:-latest}
+    container_name: mern-frontend-prod
+    restart: unless-stopped
+    networks:
+      - mern_network
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: mern-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - mern_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      backend-1:
+        condition: service_healthy
+      backend-2:
+        condition: service_healthy
+      frontend-prod:
+        condition: service_started
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: mern-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+    networks:
+      - mern_network
+    depends_on:
+      - cadvisor
+      - backend-1
+      - backend-2
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: mern-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - mern_network
+    depends_on:
+      - prometheus
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: mern-cadvisor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - mern_network
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: mern-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    networks:
+      - mern_network
+
 networks:
   mern_network:
     name: mern_network
@@ -72,4 +240,10 @@ networks:
 volumes:
   mongo-data-dev:
     name: mongo-data-dev
+    driver: local
+  prometheus-data:
+    name: prometheus-data
+    driver: local
+  grafana-data:
+    name: grafana-data
     driver: local
